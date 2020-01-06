@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 注意：这里的命名空间必须跟这个mapper文件对应的接口路径一致 -->
+<mapper namespace="com.yc.fresh.mapper.OrderInfoMapper">
+	<insert id="add" parameterType="map">
+		insert into orderinfo values(#{ono}, #{mno}, now(), '', null, null, 1, 0, 0)
+	</insert>
+	
+	<select id="getHistory" parameterType="int" resultMap="orderInfos">
+		select o.ono, mno, date_format(odate, '%Y-%m-%d %H:%i') odate, o.status, ino, i.gno, nums, i.price, gname, pics, weight, unit from orderinfo o, orderiteminfo i, goodsinfo g where o.ono=i.ono and i.gno=g.gno 
+	</select>
+	
+	<resultMap type="OrderInfo" id="orderInfos" autoMapping="true">
+		<id property="ono" column="ono"></id>
+		
+		<collection property="items" ofType="OrderItemInfo" autoMapping="true">
+			<id property="ino" column="ino"></id>
+		</collection>
+	</resultMap>
+	
+	<update id="update" parameterType="map">
+		update orderinfo set ano=#{ano}, price=#{price}, status=2 where ono=#{ono}
+	</update>
+	
+	<!-- 根据订单修改库存 -->
+	<update id="updateStore">
+		update goodsinfo set
+		<trim prefix=" balance=balance-case" suffix="end">
+			<foreach collection="array" item="item">
+				when gno=(select gno from orderiteminfo where ino=#{item}) then (select nums from orderiteminfo where ino=#{item})
+			</foreach>
+		</trim>
+		
+		<where>
+			gno in (select gno from orderiteminfo where ino in
+			<foreach collection="array" item="item" open="(" close=")" separator=",">
+				#{item}
+			</foreach>
+			)
+		</where>
+	</update>
+</mapper>
